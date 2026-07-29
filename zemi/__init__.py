@@ -1,5 +1,5 @@
-"""Вспомогательные модули проекта ZEMI."""
+"""Библиотека платформы ZEMI."""
 
-from . import chat, env, excel, llama, openai
+from . import exp, prod
 
-__all__ = ["chat", "env", "excel", "llama", "openai"]
+__all__ = ["exp", "prod"]

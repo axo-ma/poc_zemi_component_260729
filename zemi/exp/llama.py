@@ -1,3 +1,5 @@
+"""Экспериментальное управление общим процессом llama-server."""
+
 from __future__ import annotations
 
 import subprocess
