@@ -1,11 +1,3 @@
-# Игнорировать всё содержимое папок
-/llama.cpp/*
-/models/*
-
-# Но сохранить служебные файлы
-!/llama.cpp/.gitkeep
-!/models/.gitkeep
-
 # Python
 __pycache__/
 *.py[cod]

@@ -1,4 +1,4 @@
-"""Поиск корней ZEMI Instance и ZEMI Component."""
+
 
 from __future__ import annotations
 
