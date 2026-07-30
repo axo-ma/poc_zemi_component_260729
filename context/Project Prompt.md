@@ -13,6 +13,20 @@
 
 Примеры: `@inst/pythons/WPy64-312101`, `@comp/context`.
 
+## Модели Hugging Face
+
+Идентификатор модели состоит из владельца, репозитория Hugging Face и точного файла GGUF.
+
+Пример: `hf:bartowski/Qwen_Qwen3.5-4B-GGUF/Qwen_Qwen3.5-4B-Q4_K_M.gguf`.
+
+Имя папки модели формируется по правилу:
+
+`hf:{owner}/{repo}/{filename} → hf--{owner}--{repo}--{filename without .gguf}`
+
+Пример: `hf--bartowski--Qwen_Qwen3.5-4B-GGUF--Qwen_Qwen3.5-4B-Q4_K_M`.
+
+Для будущих моделей используй точный строчный префикс идентификатора `zemi:`, аналогично существующему префиксу `hf:`.
+
 ## Стандартные маркеры
 
 - ZEMI Instance отмечается ровно одним маркером в зависимости от среды: `.zemiinst_dev`, `.zemiinst_exp` или `.zemiinst_prod`.
