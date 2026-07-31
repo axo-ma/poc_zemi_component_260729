@@ -16,7 +16,8 @@ from .. import env
 
 HOST = "127.0.0.1"
 PORT = 8080
-HEALTH_URL = f"http://{HOST}:{PORT}/health"
+SERVER_URL = f"http://{HOST}:{PORT}"
+HEALTH_URL = f"{SERVER_URL}/health"
 
 _server: subprocess.Popen | None = None
 
@@ -402,7 +403,8 @@ def start(
     )
 
 
-def restart(**kwargs) -> subprocess.Popen:
-    """Останавливает текущий llama-server и запускает новый."""
+def restart(**kwargs) -> str:
+    """Останавливает текущий llama-server, запускает новый и возвращает его URL."""
     stop()
-    return start(**kwargs)
+    start(**kwargs)
+    return SERVER_URL
