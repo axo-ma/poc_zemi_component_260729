@@ -4,18 +4,15 @@ from __future__ import annotations
 
 import subprocess
 import time
-from pathlib import Path
 from urllib.error import URLError
 from urllib.request import urlopen
+
+from .. import env
 
 
 HOST = "127.0.0.1"
 PORT = 8080
 HEALTH_URL = f"http://{HOST}:{PORT}/health"
-
-DEFAULT_SERVER_PATH = Path(r".\llama.cpp\llama-server.exe")
-DEFAULT_MODEL_PATH = Path(r".\models\Qwen_Qwen3.5-4B-Q4_K_M.gguf")
-DEFAULT_MODEL_ALIAS = "qwen3.5-4b"
 
 _server: subprocess.Popen | None = None
 
@@ -139,16 +136,19 @@ def stop(timeout: float = 10.0) -> bool:
 
 def start(
     *,
-    server_path: str | Path = DEFAULT_SERVER_PATH,
-    model_path: str | Path = DEFAULT_MODEL_PATH,
-    alias: str = DEFAULT_MODEL_ALIAS,
+    llama_build: str,
+    model_owner: str,
+    model_repository: str,
+    model_filename: str,
+    model_source: str = "hf",
+    alias: str | None = None,
     ctx_size: int = 4096,
     threads: int = 4,
     threads_batch: int = 4,
     reasoning: str = "off",
     startup_timeout: float = 120.0,
 ) -> subprocess.Popen:
-    """Запускает llama-server и ждёт готовности /health."""
+    """Запускает llama-server для модели из текущего ZEMI Instance."""
     global _server
 
     if is_ready():
@@ -157,8 +157,14 @@ def start(
             "Для перезапуска используй exp.llama.restart()."
         )
 
-    server_path = Path(server_path)
-    model_path = Path(model_path)
+    server_path = env.path.llama(llama_build) / "llama-server.exe"
+    model_path = env.path.model(
+        model_owner,
+        model_repository,
+        model_filename,
+        source=model_source,
+    ) / model_filename
+    alias = alias or model_filename[:-len(".gguf")]
 
     if not server_path.is_file():
         raise FileNotFoundError(
