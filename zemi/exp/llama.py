@@ -19,6 +19,8 @@ DEFAULT_MODEL_ALIAS = "qwen3.5-4b"
 
 _server: subprocess.Popen | None = None
 
+__all__ = ["is_ready", "start", "stop", "restart"]
+
 
 def is_ready(timeout: float = 1.0) -> bool:
     """Проверяет, отвечает ли llama-server на /health."""
@@ -104,7 +106,7 @@ def _wait_until_stopped(timeout: float = 10.0) -> None:
     )
 
 
-def llamacpp_stop(timeout: float = 10.0) -> bool:
+def stop(timeout: float = 10.0) -> bool:
     """Останавливает llama-server независимо от того, кем он был запущен."""
     global _server
 
@@ -135,7 +137,7 @@ def llamacpp_stop(timeout: float = 10.0) -> bool:
     return stopped
 
 
-def llamacpp_start(
+def start(
     *,
     server_path: str | Path = DEFAULT_SERVER_PATH,
     model_path: str | Path = DEFAULT_MODEL_PATH,
@@ -152,7 +154,7 @@ def llamacpp_start(
     if is_ready():
         raise RuntimeError(
             f"llama-server уже работает на {HOST}:{PORT}. "
-            "Для перезапуска используй llama.llamacpp_restart()."
+            "Для перезапуска используй exp.llama.restart()."
         )
 
     server_path = Path(server_path)
@@ -207,7 +209,7 @@ def llamacpp_start(
     )
 
 
-def llamacpp_restart(**kwargs) -> subprocess.Popen:
+def restart(**kwargs) -> subprocess.Popen:
     """Останавливает текущий llama-server и запускает новый."""
-    llamacpp_stop()
-    return llamacpp_start(**kwargs)
+    stop()
+    return start(**kwargs)

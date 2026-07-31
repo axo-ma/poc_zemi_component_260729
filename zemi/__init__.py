@@ -1,5 +1,5 @@
 """Библиотека платформы ZEMI."""
 
-from . import exp, prod
+from . import env, exp, prod
 
-__all__ = ["exp", "prod"]
+__all__ = ["env", "exp", "prod"]
