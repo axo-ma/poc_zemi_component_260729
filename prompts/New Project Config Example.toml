@@ -1,0 +1,71 @@
+# ==============================================================================
+# КОНФИГУРАЦИЯ ZEMI (TOML)
+# Иерархия: Server -> Model -> Prefix
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# СЕРВЕР 1: Основной сервер (Порт 8080)
+# ------------------------------------------------------------------------------
+[servers.server_primary]
+url = "http://127.0.0.1:8080/v1"
+max_slots = 4
+
+    # --- Модель 1 на Сервере 1 (Qwen 2.5 3B) ---
+    [servers.server_primary.models.qwen3b]
+    file = "qwen2.5-3b-instruct.gguf"
+
+    [servers.server_primary.models.qwen3b.prefixes]
+    excel_parser = """
+    Ты — модуль ZEMI Excel Parser.
+    Преобразуй сжатую структуру таблицы SpreadsheetLLM в чистый JSON.
+    Правила: Только JSON, без комментариев.
+    """
+    json_cleaner = """
+    Ты — модуль очистки JSON. 
+    Исправь синтаксические ошибки в JSON-строке и удали лишние символы.
+    """
+
+    # --- Модель 2 на Сервере 1 (SmolLM 1.7B) ---
+    [servers.server_primary.models.smollm]
+    file = "smollm2-1.7b-instruct.gguf"
+
+    [servers.server_primary.models.smollm.prefixes]
+    fast_classifier = """
+    Определи тип входящего документа в одно слово: [Бухгалтерия, Склад, Логистика].
+    """
+    table_detector = """
+    Ответь ТОЛЬКО 'Да' или 'Нет': содержит ли входящий текст таблицу?
+    """
+
+
+# ------------------------------------------------------------------------------
+# СЕРВЕР 2: Резервный / Вторичный сервер (Порт 8081)
+# ------------------------------------------------------------------------------
+[servers.server_secondary]
+url = "http://127.0.0.1:8081/v1"
+max_slots = 2
+
+    # --- Модель 1 на Сервере 2 (Phi-3 Mini 3.8B) ---
+    [servers.server_secondary.models.phi3]
+    file = "phi-3-mini-4k-instruct.gguf"
+
+    [servers.server_secondary.models.phi3.prefixes]
+    markdown_reporter = """
+    Ты — генератор аналитических отчетов.
+    Сформируй красивую сводку в формате Markdown на основе JSON-данных.
+    """
+    python_coder = """
+    Ты — эксперт по openpyxl. Напиши Python-скрипт для стилизации Excel-файла.
+    """
+
+    # --- Модель 2 на Сервере 2 (Llama 3.2 3B) ---
+    [servers.server_secondary.models.llama3]
+    file = "llama-3.2-3b-instruct.gguf"
+
+    [servers.server_secondary.models.llama3.prefixes]
+    financial_translator = """
+    Переведи банковские и финансовые термины с английского на русский язык.
+    """
+    text_summarizer = """
+    Сделай краткую выжимку из текста длиной не более 3 предложений.
+    """
