@@ -31,14 +31,14 @@
         # ......................................................................
         [[servers.models.sessions]]
             name = "assistant"
-            prefix = "@comp/prompts/prefixes/qwen-system.md"
+            prefix = "@comp/tests/zemi_toml/prefixes/qwen-system.md"
 
         # ......................................................................
         # СЕССИЯ: json_converter
         # ......................................................................
         [[servers.models.sessions]]
             name = "json_converter"
-            prefix = "@comp/prompts/prefixes/qwen-json.md"
+            prefix = "@comp/tests/zemi_toml/prefixes/qwen-json.md"
 
     # --------------------------------------------------------------------------
     # МОДЕЛЬ: smollm
@@ -60,14 +60,14 @@
         # ......................................................................
         [[servers.models.sessions]]
             name = "assistant"
-            prefix = "@comp/prompts/prefixes/smollm-system.md"
+            prefix = "@comp/tests/zemi_toml/prefixes/smollm-system.md"
 
         # ......................................................................
         # СЕССИЯ: document_classifier
         # ......................................................................
         [[servers.models.sessions]]
             name = "document_classifier"
-            prefix = "@comp/prompts/prefixes/smollm-classifier.md"
+            prefix = "@comp/tests/zemi_toml/prefixes/smollm-classifier.md"
 
 # ==============================================================================
 # СЕРВЕР: secondary
@@ -99,14 +99,14 @@
         # ......................................................................
         [[servers.models.sessions]]
             name = "analyst"
-            prefix = "@comp/prompts/prefixes/phi-system.md"
+            prefix = "@comp/tests/zemi_toml/prefixes/phi-system.md"
 
         # ......................................................................
         # СЕССИЯ: reporter
         # ......................................................................
         [[servers.models.sessions]]
             name = "reporter"
-            prefix = "@comp/prompts/prefixes/phi-report.md"
+            prefix = "@comp/tests/zemi_toml/prefixes/phi-report.md"
 
     # --------------------------------------------------------------------------
     # МОДЕЛЬ: llama
@@ -128,11 +128,11 @@
         # ......................................................................
         [[servers.models.sessions]]
             name = "document_assistant"
-            prefix = "@comp/prompts/prefixes/llama-system.md"
+            prefix = "@comp/tests/zemi_toml/prefixes/llama-system.md"
 
         # ......................................................................
         # СЕССИЯ: summarizer
         # ......................................................................
         [[servers.models.sessions]]
             name = "summarizer"
-            prefix = "@comp/prompts/prefixes/llama-summary.md"
+            prefix = "@comp/tests/zemi_toml/prefixes/llama-summary.md"
