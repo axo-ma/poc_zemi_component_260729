@@ -1,2 +1,19 @@
 [winpython]
 root = "@inst/pythons/WPy64-312101"
+
+[[servers]]
+name = "primary"
+llama_build = "b9222"
+
+    [[servers.models]]
+    name = "qwen"
+    source = "hf"
+    owner = "bartowski"
+    repository = "Qwen_Qwen3.5-4B-GGUF"
+filename = "Qwen_Qwen3.5-4B-Q4_K_M.gguf"
+    alias = "qwen3.5-4b"
+    ctx_size = 4096
+    threads = 4
+    threads_batch = 4
+    reasoning = "off"
+    startup_timeout = 120.0

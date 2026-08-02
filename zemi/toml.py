@@ -3,9 +3,9 @@
 По сравнению со стандартным :mod:`tomllib` модуль выполняет дополнительную
 обработку результата:
 
-* строки ``@inst/...`` и ``@comp/...`` рекурсивно заменяются содержимым
-  соответствующих UTF-8-файлов относительно корня ZEMI Instance или текущего
-  ZEMI-компонента;
+* строки ``@inst/...`` и ``@comp/...``, указывающие на файлы ``.md`` или
+  ``.txt``, рекурсивно заменяются их UTF-8-содержимым относительно корня ZEMI
+  Instance или текущего ZEMI-компонента;
 * TOML-таблицы возвращаются как :class:`Table`: их поля доступны и по ключу
   (``config["servers"]``), и через точку (``config.servers``);
 * непустые массивы таблиц превращаются в :class:`NamedArray`; каждый их элемент
@@ -33,6 +33,7 @@ _PATH_PREFIXES = {
     "@inst/": "inst",
     "@comp/": "comp",
 }
+_TEXT_REFERENCE_SUFFIXES = frozenset({".md", ".txt"})
 
 
 class Table(dict[str, Any]):
@@ -58,10 +59,12 @@ class NamedArray(Table):
 
 
 def _read_reference(value: str) -> str:
-    """Заменяет ссылку ZEMI содержимым указанного файла."""
+    """Раскрывает ссылку ZEMI на Markdown- или текстовый файл."""
     for prefix, root_name in _PATH_PREFIXES.items():
         if value.startswith(prefix):
             relative_path = value.removeprefix(prefix)
+            if Path(relative_path).suffix.lower() not in _TEXT_REFERENCE_SUFFIXES:
+                return value
             file_path = getattr(env.path, root_name) / relative_path
             return file_path.read_text(encoding="utf-8")
     return value
@@ -106,8 +109,10 @@ def load(path: str | Path) -> dict[str, Any]:
     """Читает TOML, раскрывает ссылки и индексирует массивы таблиц по ``name``.
 
     Ссылкой считается строковое значение, начинающееся с одного из этих
-    префиксов. Файл по ссылке читается как UTF-8, а его текст подставляется
-    вместо исходной строки. Значения ``name`` внутри массива таблиц должны быть
+    префиксов и оканчивающееся на ``.md`` или ``.txt`` без учёта регистра.
+    Такой файл читается как UTF-8, а его текст подставляется вместо исходной
+    строки. Пути с другими расширениями остаются строками. Значения ``name``
+    внутри массива таблиц должны быть
     уникальны. Результирующий ``NamedArray`` поддерживает доступ по индексу ко
     всем элементам, а по имени — только к элементам с непустым ``name``.
     """
