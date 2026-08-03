@@ -2,13 +2,54 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from .. import env, toml
 from .llamas import DownloadError, download_llama, download_model
 
 
-__all__ = ["download"]
+__all__ = ["Arsenal", "download"]
+
+
+@dataclass
+class Arsenal:
+    """Загруженная конфигурация и ресурсы Arsenal."""
+
+    config: toml.Table
+    llamas: dict[str, Path] = field(default_factory=dict)
+    models: dict[str, Path] = field(default_factory=dict)
+
+    def begin_playbook(
+        self,
+        stop_arsenal_before_begin: bool,
+        llama_router_mode: bool = False,
+    ) -> None:
+        """Начинает работу playbook."""
+        if stop_arsenal_before_begin:
+            self._stop_arsenal()
+
+        if llama_router_mode:
+            self._begin_playbook_with_router_mode()
+        else:
+            self._begin_playbook_without_router_mode()
+
+    def end_playbook(self, stop_arsenal_after_end: bool) -> None:
+        """Завершает работу playbook."""
+        if stop_arsenal_after_end:
+            self._stop_arsenal()
+
+    def _begin_playbook_with_router_mode(self) -> None:
+        """Начинает работу playbook в режиме llama router."""
+        pass
+
+    def _begin_playbook_without_router_mode(self) -> None:
+        """Начинает работу playbook без режима llama router."""
+        pass
+
+    def _stop_arsenal(self) -> None:
+        """Останавливает работающие ресурсы Arsenal."""
+        pass
 
 
 def _resolve_zemi_path(value: str | Path) -> Path:
@@ -20,12 +61,13 @@ def _resolve_zemi_path(value: str | Path) -> Path:
     raise ValueError("Путь должен начинаться с @comp/ или @inst/")
 
 
-def download(config_path: str | Path) -> dict[str, dict[str, Path]]:
+def download(config_path: str | Path) -> Arsenal:
     """Загружает все сборки llama.cpp и модели из ``arsenal.llamas`` TOML-файла.
 
-    Возвращает два словаря путей: ``llamas`` с ключами-именами серверов и
-    ``models`` с ключами вида ``server/model``. При ожидаемой ошибке загрузки
-    печатает понятное сообщение и возвращает уже загруженную часть Arsenal.
+    Возвращает объект :class:`Arsenal` с загруженной TOML-конфигурацией и двумя
+    словарями путей: ``llamas`` с ключами-именами серверов и ``models`` с ключами
+    вида ``server/model``. При ожидаемой ошибке загрузки печатает понятное
+    сообщение и возвращает уже загруженную часть Arsenal.
     """
     path = _resolve_zemi_path(config_path)
     config_label = str(config_path).replace("\\", "/")
@@ -50,12 +92,9 @@ def download(config_path: str | Path) -> dict[str, dict[str, Path]]:
         f"моделей: {model_count}"
     )
 
-    result: dict[str, dict[str, Path]] = {
-        "llamas": {},
-        "models": {},
-    }
+    result = Arsenal(config=config)
 
-    def stop_with_error(error: DownloadError) -> dict[str, dict[str, Path]]:
+    def stop_with_error(error: DownloadError) -> Arsenal:
         print()
         print("!" * 78)
         print("ЗАГРУЗКА ОСТАНОВЛЕНА")
@@ -63,8 +102,8 @@ def download(config_path: str | Path) -> dict[str, dict[str, Path]]:
         print(error)
         print()
         print(
-            f"Успешно обработано серверов: {len(result['llamas'])} · "
-            f"моделей: {len(result['models'])}"
+            f"Успешно обработано серверов: {len(result.llamas)} · "
+            f"моделей: {len(result.models)}"
         )
         print("!" * 78)
         return result
@@ -82,7 +121,7 @@ def download(config_path: str | Path) -> dict[str, dict[str, Path]]:
         print("─" * 78)
 
         try:
-            result["llamas"][llama_name] = download_llama(llama.llama_build)
+            result.llamas[llama_name] = download_llama(llama.llama_build)
         except DownloadError as error:
             return stop_with_error(DownloadError(
                 f"Не удалось загрузить llama-server {llama_name!r} "
@@ -100,7 +139,7 @@ def download(config_path: str | Path) -> dict[str, dict[str, Path]]:
             )
 
             try:
-                result["models"][model_key] = download_model(
+                result.models[model_key] = download_model(
                     model.owner,
                     model.repository,
                     model.filename,
@@ -116,8 +155,8 @@ def download(config_path: str | Path) -> dict[str, dict[str, Path]]:
     print()
     print("═" * 78)
     print(
-        f"✓ Arsenal готов · серверов: {len(result['llamas'])} · "
-        f"моделей: {len(result['models'])}"
+        f"✓ Arsenal готов · серверов: {len(result.llamas)} · "
+        f"моделей: {len(result.models)}"
     )
     print("═" * 78)
     return result
