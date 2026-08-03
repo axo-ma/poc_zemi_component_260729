@@ -1,1 +1,141 @@
+# Пример конфигурации двух llama.cpp-серверов.
+# Значение prefix каждой сессии загружается модулем zemi.toml из Markdown-файла.
 
+non_text_reference = "@comp/runme.toml"
+text_reference = "@comp/tests/zemi_toml/prefixes/plain-text.txt"
+
+# ==============================================================================
+# СЕРВЕР: primary
+# ==============================================================================
+[[arsenal.llamas]]
+    name = "primary"
+    llama_build = "llama:b9222"
+    host = "127.0.0.1"
+    port = 8080
+    startup_timeout = 120.0
+
+    # --------------------------------------------------------------------------
+    # МОДЕЛЬ: qwen
+    # --------------------------------------------------------------------------
+    [[arsenal.llamas.models]]
+        name = "qwen"
+        source = "hf"
+        owner = "bartowski"
+        repository = "Qwen_Qwen3.5-4B-GGUF"
+        filename = "Qwen_Qwen3.5-4B-Q4_K_M.gguf"
+        alias = "qwen3.5-4b"
+        ctx_size = 8192
+        threads = 8
+        threads_batch = 8
+        reasoning = "off"
+
+        # ......................................................................
+        # СЕССИЯ: assistant
+        # ......................................................................
+        [[arsenal.llamas.models.sessions]]
+            name = "assistant"
+            prefix = "@comp/tests/zemi_toml/prefixes/qwen-system.md"
+
+        # ......................................................................
+        # СЕССИЯ: json_converter
+        # ......................................................................
+        [[arsenal.llamas.models.sessions]]
+            name = "json_converter"
+            prefix = "@comp/tests/zemi_toml/prefixes/qwen-json.md"
+
+    # --------------------------------------------------------------------------
+    # МОДЕЛЬ: smollm
+    # --------------------------------------------------------------------------
+    [[arsenal.llamas.models]]
+        name = "smollm"
+        source = "hf"
+        owner = "bartowski"
+        repository = "SmolLM2-1.7B-Instruct-GGUF"
+        filename = "SmolLM2-1.7B-Instruct-Q4_K_M.gguf"
+        alias = "smollm2-1.7b"
+        ctx_size = 4096
+        threads = 6
+        threads_batch = 6
+        reasoning = "off"
+
+        # ......................................................................
+        # СЕССИЯ: assistant
+        # ......................................................................
+        [[arsenal.llamas.models.sessions]]
+            name = "assistant"
+            prefix = "@comp/tests/zemi_toml/prefixes/smollm-system.md"
+
+        # ......................................................................
+        # СЕССИЯ: document_classifier
+        # ......................................................................
+        [[arsenal.llamas.models.sessions]]
+            name = "document_classifier"
+            prefix = "@comp/tests/zemi_toml/prefixes/smollm-classifier.md"
+
+# ==============================================================================
+# СЕРВЕР: secondary
+# ==============================================================================
+[[arsenal.llamas]]
+    name = "secondary"
+    llama_build = "llama:b9222"
+    host = "127.0.0.1"
+    port = 8081
+    startup_timeout = 120.0
+
+    # --------------------------------------------------------------------------
+    # МОДЕЛЬ: phi
+    # --------------------------------------------------------------------------
+    [[arsenal.llamas.models]]
+        name = "phi"
+        source = "hf"
+        owner = "bartowski"
+        repository = "Phi-3.5-mini-instruct-GGUF"
+        filename = "Phi-3.5-mini-instruct-Q4_K_M.gguf"
+        alias = "phi-3.5-mini"
+        ctx_size = 8192
+        threads = 8
+        threads_batch = 8
+        reasoning = "off"
+
+        # ......................................................................
+        # СЕССИЯ: analyst
+        # ......................................................................
+        [[arsenal.llamas.models.sessions]]
+            name = "analyst"
+            prefix = "@comp/tests/zemi_toml/prefixes/phi-system.md"
+
+        # ......................................................................
+        # СЕССИЯ: reporter
+        # ......................................................................
+        [[arsenal.llamas.models.sessions]]
+            name = "reporter"
+            prefix = "@comp/tests/zemi_toml/prefixes/phi-report.md"
+
+    # --------------------------------------------------------------------------
+    # МОДЕЛЬ: llama
+    # --------------------------------------------------------------------------
+    [[arsenal.llamas.models]]
+        name = "llama"
+        source = "hf"
+        owner = "bartowski"
+        repository = "Llama-3.2-3B-Instruct-GGUF"
+        filename = "Llama-3.2-3B-Instruct-Q4_K_M.gguf"
+        alias = "llama-3.2-3b"
+        ctx_size = 8192
+        threads = 8
+        threads_batch = 8
+        reasoning = "off"
+
+        # ......................................................................
+        # СЕССИЯ: document_assistant
+        # ......................................................................
+        [[arsenal.llamas.models.sessions]]
+            name = "document_assistant"
+            prefix = "@comp/tests/zemi_toml/prefixes/llama-system.md"
+
+        # ......................................................................
+        # СЕССИЯ: summarizer
+        # ......................................................................
+        [[arsenal.llamas.models.sessions]]
+            name = "summarizer"
+            prefix = "@comp/tests/zemi_toml/prefixes/llama-summary.md"
