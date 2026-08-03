@@ -1,4 +1,4 @@
-# Пример конфигурации двух llama.cpp-серверов.
+# Тестовая конфигурация двух многомодельных llama.cpp-серверов для Router Mode.
 # Значение prefix каждой сессии загружается модулем zemi.toml из Markdown-файла.
 
 non_text_reference = "@comp/runme.toml"
