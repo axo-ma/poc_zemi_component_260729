@@ -7,7 +7,7 @@ text_reference = "@comp/tests/zemi_toml/prefixes/plain-text.txt"
 # ==============================================================================
 # СЕРВЕР: primary
 # ==============================================================================
-[[servers]]
+[[arsenal.llamas]]
     name = "primary"
     llama_build = "llama:b9222"
     host = "127.0.0.1"
@@ -17,7 +17,7 @@ text_reference = "@comp/tests/zemi_toml/prefixes/plain-text.txt"
     # --------------------------------------------------------------------------
     # МОДЕЛЬ: qwen
     # --------------------------------------------------------------------------
-    [[servers.models]]
+    [[arsenal.llamas.models]]
         name = "qwen"
         source = "hf"
         owner = "bartowski"
@@ -32,21 +32,21 @@ text_reference = "@comp/tests/zemi_toml/prefixes/plain-text.txt"
         # ......................................................................
         # СЕССИЯ: assistant
         # ......................................................................
-        [[servers.models.sessions]]
+        [[arsenal.llamas.models.sessions]]
             name = "assistant"
             prefix = "@comp/tests/zemi_toml/prefixes/qwen-system.md"
 
         # ......................................................................
         # СЕССИЯ: json_converter
         # ......................................................................
-        [[servers.models.sessions]]
+        [[arsenal.llamas.models.sessions]]
             name = "json_converter"
             prefix = "@comp/tests/zemi_toml/prefixes/qwen-json.md"
 
     # --------------------------------------------------------------------------
     # МОДЕЛЬ: smollm
     # --------------------------------------------------------------------------
-    [[servers.models]]
+    [[arsenal.llamas.models]]
         name = "smollm"
         source = "hf"
         owner = "bartowski"
@@ -61,21 +61,21 @@ text_reference = "@comp/tests/zemi_toml/prefixes/plain-text.txt"
         # ......................................................................
         # СЕССИЯ: assistant
         # ......................................................................
-        [[servers.models.sessions]]
+        [[arsenal.llamas.models.sessions]]
             name = "assistant"
             prefix = "@comp/tests/zemi_toml/prefixes/smollm-system.md"
 
         # ......................................................................
         # СЕССИЯ: document_classifier
         # ......................................................................
-        [[servers.models.sessions]]
+        [[arsenal.llamas.models.sessions]]
             name = "document_classifier"
             prefix = "@comp/tests/zemi_toml/prefixes/smollm-classifier.md"
 
 # ==============================================================================
 # СЕРВЕР: secondary
 # ==============================================================================
-[[servers]]
+[[arsenal.llamas]]
     name = "secondary"
     llama_build = "llama:b9222"
     host = "127.0.0.1"
@@ -85,7 +85,7 @@ text_reference = "@comp/tests/zemi_toml/prefixes/plain-text.txt"
     # --------------------------------------------------------------------------
     # МОДЕЛЬ: phi
     # --------------------------------------------------------------------------
-    [[servers.models]]
+    [[arsenal.llamas.models]]
         name = "phi"
         source = "hf"
         owner = "bartowski"
@@ -100,21 +100,21 @@ text_reference = "@comp/tests/zemi_toml/prefixes/plain-text.txt"
         # ......................................................................
         # СЕССИЯ: analyst
         # ......................................................................
-        [[servers.models.sessions]]
+        [[arsenal.llamas.models.sessions]]
             name = "analyst"
             prefix = "@comp/tests/zemi_toml/prefixes/phi-system.md"
 
         # ......................................................................
         # СЕССИЯ: reporter
         # ......................................................................
-        [[servers.models.sessions]]
+        [[arsenal.llamas.models.sessions]]
             name = "reporter"
             prefix = "@comp/tests/zemi_toml/prefixes/phi-report.md"
 
     # --------------------------------------------------------------------------
     # МОДЕЛЬ: llama
     # --------------------------------------------------------------------------
-    [[servers.models]]
+    [[arsenal.llamas.models]]
         name = "llama"
         source = "hf"
         owner = "bartowski"
@@ -129,13 +129,13 @@ text_reference = "@comp/tests/zemi_toml/prefixes/plain-text.txt"
         # ......................................................................
         # СЕССИЯ: document_assistant
         # ......................................................................
-        [[servers.models.sessions]]
+        [[arsenal.llamas.models.sessions]]
             name = "document_assistant"
             prefix = "@comp/tests/zemi_toml/prefixes/llama-system.md"
 
         # ......................................................................
         # СЕССИЯ: summarizer
         # ......................................................................
-        [[servers.models.sessions]]
+        [[arsenal.llamas.models.sessions]]
             name = "summarizer"
             prefix = "@comp/tests/zemi_toml/prefixes/llama-summary.md"
