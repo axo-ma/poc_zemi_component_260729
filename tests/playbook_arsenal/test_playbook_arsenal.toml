@@ -30,16 +30,16 @@ text_reference = "@comp/tests/zemi_toml/prefixes/plain-text.txt"
         reasoning = "off"
 
         # ......................................................................
-        # СЕССИЯ: assistant
+        # АССИСТЕНТ: assistant
         # ......................................................................
-        [[arsenal.llamas.models.sessions]]
+        [[arsenal.llamas.models.assistants]]
             name = "assistant"
             prefix = "@comp/tests/zemi_toml/prefixes/qwen-system.md"
 
         # ......................................................................
-        # СЕССИЯ: json_converter
+        # АССИСТЕНТ: json_converter
         # ......................................................................
-        [[arsenal.llamas.models.sessions]]
+        [[arsenal.llamas.models.assistants]]
             name = "json_converter"
             prefix = "@comp/tests/zemi_toml/prefixes/qwen-json.md"
 
@@ -59,16 +59,16 @@ text_reference = "@comp/tests/zemi_toml/prefixes/plain-text.txt"
         reasoning = "off"
 
         # ......................................................................
-        # СЕССИЯ: assistant
+        # АССИСТЕНТ: assistant
         # ......................................................................
-        [[arsenal.llamas.models.sessions]]
+        [[arsenal.llamas.models.assistants]]
             name = "assistant"
             prefix = "@comp/tests/zemi_toml/prefixes/smollm-system.md"
 
         # ......................................................................
-        # СЕССИЯ: document_classifier
+        # АССИСТЕНТ: document_classifier
         # ......................................................................
-        [[arsenal.llamas.models.sessions]]
+        [[arsenal.llamas.models.assistants]]
             name = "document_classifier"
             prefix = "@comp/tests/zemi_toml/prefixes/smollm-classifier.md"
 
@@ -98,16 +98,16 @@ text_reference = "@comp/tests/zemi_toml/prefixes/plain-text.txt"
         reasoning = "off"
 
         # ......................................................................
-        # СЕССИЯ: analyst
+        # АССИСТЕНТ: analyst
         # ......................................................................
-        [[arsenal.llamas.models.sessions]]
+        [[arsenal.llamas.models.assistants]]
             name = "analyst"
             prefix = "@comp/tests/zemi_toml/prefixes/phi-system.md"
 
         # ......................................................................
-        # СЕССИЯ: reporter
+        # АССИСТЕНТ: reporter
         # ......................................................................
-        [[arsenal.llamas.models.sessions]]
+        [[arsenal.llamas.models.assistants]]
             name = "reporter"
             prefix = "@comp/tests/zemi_toml/prefixes/phi-report.md"
 
@@ -127,15 +127,15 @@ text_reference = "@comp/tests/zemi_toml/prefixes/plain-text.txt"
         reasoning = "off"
 
         # ......................................................................
-        # СЕССИЯ: document_assistant
+        # АССИСТЕНТ: document_assistant
         # ......................................................................
-        [[arsenal.llamas.models.sessions]]
+        [[arsenal.llamas.models.assistants]]
             name = "document_assistant"
             prefix = "@comp/tests/zemi_toml/prefixes/llama-system.md"
 
         # ......................................................................
-        # СЕССИЯ: summarizer
+        # АССИСТЕНТ: summarizer
         # ......................................................................
-        [[arsenal.llamas.models.sessions]]
+        [[arsenal.llamas.models.assistants]]
             name = "summarizer"
             prefix = "@comp/tests/zemi_toml/prefixes/llama-summary.md"
