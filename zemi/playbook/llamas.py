@@ -88,7 +88,13 @@ class _Progress:
             print(f"\r{message}", end="\n" if done else "", flush=True)
 
 
-def _download(url: str, destination: Path, *, label: str) -> None:
+def _download(
+    url: str,
+    destination: Path,
+    *,
+    label: str,
+    size_file: Path | None = None,
+) -> None:
     """Потоково скачивает URL с прогрессом и атомарно переносит файл на место."""
     destination.parent.mkdir(parents=True, exist_ok=True)
     temporary = destination.with_name(f".{destination.name}.{uuid4().hex}.part")
@@ -98,6 +104,14 @@ def _download(url: str, destination: Path, *, label: str) -> None:
         with urlopen(request) as response, temporary.open("wb") as output:
             header = response.headers.get("Content-Length")
             total = int(header) if header and header.isdigit() else None
+            if size_file is not None:
+                if total is None:
+                    raise DownloadError(
+                        "Сервер не сообщил размер модели.\n"
+                        f"Адрес: {url}\n"
+                        "Без размера безопасная загрузка модели невозможна."
+                    )
+                size_file.write_text(str(total), encoding="ascii")
             progress = _Progress(label, total)
             loaded = 0
 
@@ -146,58 +160,44 @@ def _download(url: str, destination: Path, *, label: str) -> None:
         raise
 
 
-def _remote_size(url: str) -> int | None:
-    """Получает полный размер удалённого файла, не скачивая его содержимое."""
-    request = Request(
-        url,
-        headers={"User-Agent": "ZEMI", "Range": "bytes=0-0"},
-    )
+def _model_size_file(model_path: Path) -> Path:
+    """Возвращает путь к файлу с ожидаемым размером модели."""
+    return model_path.with_name(f"{model_path.name}.size")
+
+
+def _read_model_size(size_file: Path) -> int | None:
+    """Читает сохранённый размер модели или возвращает ``None``."""
     try:
-        with urlopen(request) as response:
-            content_range = response.headers.get("Content-Range")
-            if content_range and "/" in content_range:
-                total = content_range.rsplit("/", 1)[1]
-                if total.isdigit():
-                    return int(total)
-
-            content_length = response.headers.get("Content-Length")
-            if content_length and content_length.isdigit():
-                return int(content_length)
-            return None
-    except HTTPError as error:
-        reason = error.reason or "без пояснения"
-        raise DownloadError(
-            "Не удалось проверить существующий файл на сервере.\n"
-            f"HTTP-статус: {error.code} {reason}\n"
-            f"Адрес: {url}"
-        ) from None
-    except URLError as error:
-        raise DownloadError(
-            "Не удалось проверить существующий файл: нет соединения с сервером.\n"
-            f"Причина: {error.reason}\n"
-            f"Адрес: {url}"
-        ) from None
+        value = size_file.read_text(encoding="ascii").strip()
+    except (FileNotFoundError, OSError, UnicodeError):
+        return None
+    return int(value) if value.isdigit() and int(value) > 0 else None
 
 
-def _is_complete_file(path: Path, url: str) -> bool:
-    """Сравнивает размер существующего файла с размером на сервере."""
-    remote_size = _remote_size(url)
-    if remote_size is None:
-        raise DownloadError(
-            "Сервер не сообщил размер файла; проверить целостность невозможно.\n"
-            f"Файл: {_display_zemi_path(path)}\n"
-            f"Адрес: {url}"
+def _is_complete_model(model_path: Path, size_file: Path) -> bool:
+    """Проверяет модель по локальному файлу ожидаемого размера."""
+    if not model_path.is_file():
+        return False
+
+    expected_size = _read_model_size(size_file)
+    actual_size = model_path.stat().st_size
+
+    if expected_size is None:
+        size_file.write_text(str(actual_size), encoding="ascii")
+        print(
+            "Создан локальный файл размера для ранее загруженной модели: "
+            f"{_display_zemi_path(size_file)}"
         )
+        return True
 
-    local_size = path.stat().st_size
-    if local_size == remote_size:
+    if actual_size == expected_size:
         return True
 
     print(
         "Обнаружен неполный файл модели:\n"
-        f"  файл: {_display_zemi_path(path)}\n"
-        f"  загружено: {_format_size(local_size)}\n"
-        f"  полный размер: {_format_size(remote_size)}\n"
+        f"  файл: {_display_zemi_path(model_path)}\n"
+        f"  загружено: {_format_size(actual_size)}\n"
+        f"  ожидается: {_format_size(expected_size)}\n"
         "Модель будет загружена заново."
     )
     return False
@@ -269,13 +269,14 @@ def download_model(
     """Скачивает GGUF-модель в каталог текущего ZEMI Instance."""
     target_directory = env.path.model(owner, repository, filename, source=source)
     target = target_directory / filename
+    size_file = _model_size_file(target)
 
     if url is None:
         if source.removesuffix(":") != "hf":
             raise ValueError("Для источника, отличного от hf, необходимо передать url")
         url = f"https://huggingface.co/{owner}/{repository}/resolve/main/{filename}"
 
-    if target.is_file() and _is_complete_file(target, url):
+    if _is_complete_model(target, size_file):
         print(f"Модель уже загружена: {_display_zemi_path(target)}")
         return target
 
@@ -284,6 +285,7 @@ def download_model(
         url,
         target,
         label=f"Модель {owner}/{repository}/{filename}",
+        size_file=size_file,
     )
     print(f"Модель загружена: {_display_zemi_path(target)}")
     return target
