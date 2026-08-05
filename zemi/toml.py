@@ -1,23 +1,14 @@
-"""Расширенное чтение TOML-конфигураций ZEMI.
+"""Чтение и общая валидация TOML-конфигураций ZEMI.
 
-По сравнению со стандартным :mod:`tomllib` модуль выполняет дополнительную
-обработку результата:
+Модуль сохраняет стандартное дерево ``dict``/``list`` из :mod:`tomllib` и не
+создаёт предметные объекты. Дополнительная обработка ограничена проверкой:
 
-* строки ``@inst/...`` и ``@comp/...``, указывающие на файлы ``.md`` или
-  ``.txt``, рекурсивно заменяются их UTF-8-содержимым относительно корня ZEMI
-  Instance или текущего ZEMI-компонента;
-* TOML-таблицы возвращаются как :class:`Table`: их поля доступны и по ключу
-  (``config["arsenal"]``), и через точку (``config.arsenal``);
-* непустые массивы таблиц превращаются в :class:`NamedArray`; каждый их элемент
-  доступен по позиции, включая отрицательные индексы, а элемент с непустым
-  строковым ``name`` — также по имени;
-* непустые имена внутри одного массива обязаны быть уникальными; отсутствие или
-  пустое значение ``name`` разрешено и оставляет только доступ по индексу;
-* обычные массивы значений и пустые массивы остаются Python-списками, а прочие
-  TOML-типы сохраняют стандартное представление :mod:`tomllib`.
+* непустые значения ``name`` в одном массиве таблиц должны быть уникальными;
+* строки с префиксом ``@inst/`` или ``@comp/`` должны указывать на существующий
+  путь внутри соответствующего корня ZEMI.
 
-Основная точка входа — :func:`load`. Она принимает путь к TOML-файлу и
-возвращает корневую :class:`Table` со всеми преобразованиями выше.
+ZEMI-ссылки остаются исходными строками. Чтение содержимого связанных файлов —
+ответственность использующего конфигурацию модуля.
 """
 
 from __future__ import annotations
@@ -33,92 +24,69 @@ _PATH_PREFIXES = {
     "@inst/": "inst",
     "@comp/": "comp",
 }
-_TEXT_REFERENCE_SUFFIXES = frozenset({".md", ".txt"})
 
 
-class Table(dict[str, Any]):
-    """TOML-таблица с доступом к ключам как к атрибутам."""
-
-    def __getattribute__(self, name: str) -> Any:
-        if not name.startswith("_") and dict.__contains__(self, name):
-            return dict.__getitem__(self, name)
-        return super().__getattribute__(name)
-
-
-class NamedArray(Table):
-    """Массив именованных TOML-таблиц с доступом по имени и индексу."""
-
-    def __getitem__(self, key: str | int) -> dict[str, Any]:
-        if isinstance(key, int) and not isinstance(key, bool):
-            values = tuple(dict.values(self))
-            try:
-                return values[key]
-            except IndexError:
-                raise IndexError(f"индекс именованного массива вне диапазона: {key}") from None
-        return super().__getitem__(key)
-
-
-def _read_reference(value: str) -> str:
-    """Раскрывает ссылку ZEMI на Markdown- или текстовый файл."""
+def _validate_reference(value: str, location: str) -> None:
+    """Проверяет существование ZEMI-пути, не изменяя исходную строку."""
     for prefix, root_name in _PATH_PREFIXES.items():
-        if value.startswith(prefix):
-            relative_path = value.removeprefix(prefix)
-            if Path(relative_path).suffix.lower() not in _TEXT_REFERENCE_SUFFIXES:
-                return value
-            file_path = getattr(env.path, root_name) / relative_path
-            return file_path.read_text(encoding="utf-8")
-    return value
+        if not value.startswith(prefix):
+            continue
+
+        relative_value = value.removeprefix(prefix).replace("\\", "/")
+        relative_path = Path(relative_value)
+        if (
+            not relative_value
+            or relative_path.is_absolute()
+            or ".." in relative_path.parts
+        ):
+            raise ValueError(f"Некорректный ZEMI-путь в {location}: {value!r}")
+
+        path = getattr(env.path, root_name) / relative_path
+        if not path.exists():
+            raise FileNotFoundError(
+                f"ZEMI-путь из {location} не существует: {value!r} ({path})"
+            )
+        return
 
 
-def _prepare(value: Any, location: str = "root") -> Any:
-    """Раскрывает ссылки и преобразует массивы таблиц в ``NamedArray``."""
+def _validate(value: Any, location: str = "root") -> None:
+    """Рекурсивно проверяет ссылки и уникальность имён в обычном TOML-дереве."""
     if isinstance(value, str):
-        return _read_reference(value)
+        _validate_reference(value, location)
+        return
+
     if isinstance(value, dict):
-        return Table({
-            key: _prepare(item, f"{location}.{key}")
-            for key, item in value.items()
-        })
-    if isinstance(value, list):
-        items = [
-            _prepare(item, f"{location}[{index}]")
-            for index, item in enumerate(value)
-        ]
-        if items and all(isinstance(item, dict) for item in items):
-            named_items = NamedArray()
-            for index, item in enumerate(items):
-                name = dict.get(item, "name")
-                if name is None or name == "":
-                    named_items[index] = item
-                    continue
-                if not isinstance(name, str):
-                    raise ValueError(
-                        f"{location}[{index}].name должен быть строкой"
-                    )
-                if name in named_items:
-                    raise ValueError(
-                        f"повторяющееся имя {name!r} в массиве {location}"
-                    )
-                named_items[name] = item
-            return named_items
-        return items
-    return value
+        for key, item in value.items():
+            _validate(item, f"{location}.{key}")
+        return
+
+    if not isinstance(value, list):
+        return
+
+    if value and all(isinstance(item, dict) for item in value):
+        names: set[str] = set()
+        for index, item in enumerate(value):
+            name = item.get("name")
+            if name is None or name == "":
+                continue
+            if not isinstance(name, str):
+                raise ValueError(f"{location}[{index}].name должен быть строкой")
+            if name in names:
+                raise ValueError(
+                    f"повторяющееся имя {name!r} в массиве {location}"
+                )
+            names.add(name)
+
+    for index, item in enumerate(value):
+        _validate(item, f"{location}[{index}]")
 
 
 def load(path: str | Path) -> dict[str, Any]:
-    """Читает TOML, раскрывает ссылки и индексирует массивы таблиц по ``name``.
-
-    Ссылкой считается строковое значение, начинающееся с одного из этих
-    префиксов и оканчивающееся на ``.md`` или ``.txt`` без учёта регистра.
-    Такой файл читается как UTF-8, а его текст подставляется вместо исходной
-    строки. Пути с другими расширениями остаются строками. Значения ``name``
-    внутри массива таблиц должны быть
-    уникальны. Результирующий ``NamedArray`` поддерживает доступ по индексу ко
-    всем элементам, а по имени — только к элементам с непустым ``name``.
-    """
+    """Читает TOML и валидирует общие ограничения ZEMI без изменения данных."""
     with Path(path).open("rb") as file:
         data = tomllib.load(file)
-    return _prepare(data)
+    _validate(data)
+    return data
 
 
-__all__ = ["NamedArray", "Table", "load"]
+__all__ = ["load"]

@@ -6,7 +6,7 @@ import subprocess
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Generic, Iterator, TypeVar, overload
+from typing import Any, Generic, Iterator, TypeVar, overload
 from urllib.error import URLError
 from urllib.request import urlopen
 
@@ -18,6 +18,18 @@ __all__ = ["Arsenal", "Assistant", "Llama", "Model", "NamedObjects", "download"]
 
 
 _T = TypeVar("_T")
+
+
+class _ConfigObject:
+    """Предметный объект с доступом к значениям исходной конфигурации."""
+
+    config: dict[str, Any]
+
+    def __getattr__(self, name: str) -> Any:
+        try:
+            return self.config[name]
+        except KeyError:
+            raise AttributeError(name) from None
 
 
 class NamedObjects(Generic[_T]):
@@ -59,10 +71,10 @@ class NamedObjects(Generic[_T]):
 
 
 @dataclass(frozen=True)
-class Assistant:
+class Assistant(_ConfigObject):
     """Ассистент модели и его исходная TOML-конфигурация."""
 
-    config: toml.Table
+    config: dict[str, Any]
 
     @property
     def name(self) -> str:
@@ -70,20 +82,20 @@ class Assistant:
 
 
 @dataclass(frozen=True)
-class Model:
+class Model(_ConfigObject):
     """Модель llama-сервера, её ассистенты и TOML-конфигурация."""
 
-    config: toml.Table
+    config: dict[str, Any]
     assistants: NamedObjects[Assistant] = field(init=False)
 
     def __post_init__(self) -> None:
-        configs = self.config.get("assistants")
+        configs = self.config.get("assistants", [])
         object.__setattr__(
             self,
             "assistants",
             NamedObjects([
                 Assistant(config)
-                for config in (() if configs is None else configs.values())
+                for config in configs
             ]),
         )
 
@@ -93,17 +105,17 @@ class Model:
 
 
 @dataclass(frozen=True)
-class Llama:
+class Llama(_ConfigObject):
     """Llama-сервер, его модели и исходная TOML-конфигурация."""
 
-    config: toml.Table
+    config: dict[str, Any]
     models: NamedObjects[Model] = field(init=False)
 
     def __post_init__(self) -> None:
         object.__setattr__(
             self,
             "models",
-            NamedObjects([Model(config) for config in self.config.models.values()]),
+            NamedObjects([Model(config) for config in self.config["models"]]),
         )
 
     @property
@@ -115,7 +127,7 @@ class Llama:
 class Arsenal:
     """Загруженная конфигурация и ресурсы Arsenal."""
 
-    config: toml.Table
+    config: dict[str, Any]
     llamas: NamedObjects[Llama] = field(init=False)
     _llama_paths: dict[str, Path] = field(default_factory=dict, repr=False)
     _model_paths: dict[str, Path] = field(default_factory=dict, repr=False)
@@ -124,9 +136,15 @@ class Arsenal:
     )
 
     def __post_init__(self) -> None:
-        self.llamas = NamedObjects([
-            Llama(config) for config in self.config.arsenal.llamas.values()
-        ])
+        try:
+            configs = self.config["arsenal"]["llamas"]
+        except (KeyError, TypeError) as error:
+            raise ValueError(
+                "TOML должен содержать массив таблиц [[arsenal.llamas]]"
+            ) from error
+        if not isinstance(configs, list):
+            raise ValueError("arsenal.llamas должен быть массивом таблиц")
+        self.llamas = NamedObjects([Llama(config) for config in configs])
 
     def begin_playbook(
         self,
@@ -149,7 +167,7 @@ class Arsenal:
 
     def _begin_playbook_with_router_mode(self) -> None:
         """Начинает работу playbook в режиме llama router."""
-        llama_items = list(self.config.arsenal.llamas.values())
+        llama_items = list(self.llamas)
         self._print_operation_header(
             "ЗАПУСК ARSENAL · ROUTER MODE",
             len(llama_items),
@@ -169,7 +187,7 @@ class Arsenal:
 
     def _begin_playbook_without_router_mode(self) -> None:
         """Начинает работу playbook без режима llama router."""
-        llama_items = list(self.config.arsenal.llamas.values())
+        llama_items = list(self.llamas)
         self._print_operation_header(
             "ЗАПУСК ARSENAL · MODEL MODE",
             len(llama_items),
@@ -189,7 +207,7 @@ class Arsenal:
             )
 
         for number, llama in enumerate(llama_items, start=1):
-            model = next(iter(llama.models.values()))
+            model = next(iter(llama.models))
             command = [
                 str(self._server_path(llama)),
                 "--model", str(self._model_path(llama, model)),
@@ -207,7 +225,7 @@ class Arsenal:
 
     def _stop_arsenal(self) -> None:
         """Останавливает работающие ресурсы Arsenal."""
-        llama_items = list(self.config.arsenal.llamas.values())
+        llama_items = list(self.llamas)
         self._print_operation_header("ОСТАНОВКА ARSENAL", len(llama_items))
 
         for number, llama in enumerate(llama_items, start=1):
@@ -245,7 +263,7 @@ class Arsenal:
         print(message)
         print("═" * 78)
 
-    def _server_path(self, llama: toml.Table) -> Path:
+    def _server_path(self, llama: Llama) -> Path:
         directory = self._llama_paths.get(
             llama.name, env.path.llama(llama.llama_build)
         )
@@ -254,7 +272,7 @@ class Arsenal:
             raise FileNotFoundError(f"llama-server.exe не найден: {path.resolve()}")
         return path
 
-    def _model_path(self, llama: toml.Table, model: toml.Table) -> Path:
+    def _model_path(self, llama: Llama, model: Model) -> Path:
         key = f"{llama.name}/{model.name}"
         path = self._model_paths.get(key)
         if path is None:
@@ -270,7 +288,7 @@ class Arsenal:
 
     def _start_server(
         self,
-        llama: toml.Table,
+        llama: Llama,
         command: list[str],
         number: int,
         total: int,
@@ -308,10 +326,10 @@ class Arsenal:
             f"{float(llama.startup_timeout):.1f} секунд"
         )
 
-    def _write_router_preset(self, llama: toml.Table) -> Path:
+    def _write_router_preset(self, llama: Llama) -> Path:
         preset_path = env.path.tmp / f"zemi-arsenal-{llama.name}.ini"
         lines = ["version = 1", ""]
-        for model in llama.models.values():
+        for model in llama.models:
             lines.extend([
                 f"[{model.alias}]",
                 f"model = {self._model_path(llama, model)}",
@@ -399,21 +417,13 @@ def download(config_path: str | Path) -> Arsenal:
     print("═" * 78)
 
     config = toml.load(path)
-    try:
-        llamas = config.arsenal.llamas
-    except AttributeError as error:
-        raise ValueError(
-            "TOML должен содержать массив таблиц [[arsenal.llamas]]"
-        ) from error
-
-    llama_items = list(llamas.values())
+    result = Arsenal(config=config)
+    llama_items = list(result.llamas)
     model_count = sum(len(llama.models) for llama in llama_items)
     print(
         f"Найдено серверов: {len(llama_items)} · "
         f"моделей: {model_count}"
     )
-
-    result = Arsenal(config=config)
 
     def stop_with_error(error: DownloadError) -> Arsenal:
         print()
@@ -449,7 +459,7 @@ def download(config_path: str | Path) -> Arsenal:
                 f"({llama.llama_build}).\n\n{error}"
             ))
 
-        for model in llama.models.values():
+        for model in llama.models:
             model_number += 1
             model_name = model.name
             model_key = f"{llama_name}/{model_name}"

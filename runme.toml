@@ -1,5 +1,5 @@
 [winpython]
-root = "@inst/pythons/WPy64-312101"
+root = "@inst/_pythons/WPy64-312101"
 
 [[servers]]
 name = "primary"

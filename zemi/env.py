@@ -85,8 +85,8 @@ class _Paths:
 
     @property
     def pythons(self) -> Path:
-        """Папка pythons текущего ZEMI Instance."""
-        return self.inst / "pythons"
+        """Папка _pythons текущего ZEMI Instance."""
+        return self.inst / "_pythons"
 
 
 path = _Paths()
