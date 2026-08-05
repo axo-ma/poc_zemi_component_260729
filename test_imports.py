@@ -1,7 +1,7 @@
 import os
 import sys
 
-# Отключаем сетевую проверку LiteLLM
+# Отключаем сетевую валидацию стоимости LiteLLM при импорте в офлайн-режиме
 os.environ["LITELLM_LOCAL_MODEL_COST_MAP"] = "True"
 
 def check_import(module_name: str, display_name: str = None) -> bool:
@@ -39,6 +39,7 @@ def main():
     check_import("outlines")
     check_import("guidance")
     check_import("llama_index.core", "llama-index-core")
+    check_import("llama_index.llms.openai", "llama-index-llms-openai")
     check_import("unstructured_client", "unstructured-client")
 
     print("\n--- Тест завершен ---\n")

@@ -1,5 +1,6 @@
-# --- Logit Masking, DSL & RAG Core ---
+# --- Logit Masking, Grammars & Advanced RAG ---
 outlines>=0.0.40
 guidance>=0.1.15
 llama-index-core>=0.10.0
+llama-index-llms-openai>=0.1.0
 unstructured-client>=0.25.0
