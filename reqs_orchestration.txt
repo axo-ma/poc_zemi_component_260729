@@ -1,0 +1,7 @@
+# --- Prompt Optimization, Tool Calling & Structuring ---
+dspy-ai>=2.4.0
+instructor>=1.3.0
+pydantic-ai>=0.0.14
+baml-py>=0.70.0
+smolagents>=1.0.0
+litellm>=1.35.0

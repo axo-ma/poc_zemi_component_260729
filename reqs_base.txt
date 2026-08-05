@@ -1,0 +1,15 @@
+# --- Transport & Core ---
+openai>=1.30.0
+httpx>=0.27.0
+pydantic>=2.7.0
+
+# --- Fast Excel ETL & Data Engine ---
+python-calamine>=0.2.0
+openpyxl>=3.1.0
+markitdown>=0.0.1a0
+pandas>=2.2.0
+duckdb>=1.0.0
+
+# --- Ultra-Light Embeddings & UI ---
+fastembed>=0.3.0
+streamlit>=1.35.0

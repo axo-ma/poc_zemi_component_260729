@@ -1,79 +1,27 @@
-# Минимальный пример использования модели
+## Управление песочницей (Скрипты развертывания и сброса)
 
-* bartowski/Qwen_Qwen3.5-4B-GGUF File: Qwen3.5-4B-Q4_K_M.gguf
-* с использованием llama.cpp и openai Python client
+Для автоматического развертывания и очистки изолированной среды проекта используются два командных файла. Они гарантируют, что основная система и WinPython остаются чистыми, а все зависимости и кэши локализованы внутри рабочей директории.
 
-## Вводные
+### 1. `setup_sandbox.bat` — Автоматическое развертывание
 
-Bartowski использовал llama.cpp b9222 для конвертации и квантования GGUF-файлов.
+Скрипт выполняет полную сборку рабочей среды песочницы в пошаговом режиме:
 
-* <https://huggingface.co/bartowski/Qwen_Qwen3.5-4B-GGUF>
-* <https://github.com/ggml-org/llama.cpp/releases?page=3#release-b9992>
+* **Создание изолированной среды:** Проверяет наличие или создает локальную папку `.venv` с использованием интерпретатора Python 3.12.
+* **Послойная установка зависимостей:** Устанавливает пакеты из трех файлов требований с флагом жесткой защиты от компиляции C++ кода из исходников (`--only-binary :all:`):
+* **Слой 1 (`reqs_base.txt`):** Базовое ядро (транспорт, быстрый ETL через `python-calamine`, `openpyxl`, `pandas`, `duckdb`, `fastembed`, `streamlit`).
+* **Слой 2 (`reqs_orchestration.txt`):** Инструменты оркестрации, структурирования и вызова функций (`dspy`, `instructor`, `pydantic-ai`, `baml-py`, `smolagents`, `litellm`).
+* **Слой 3 (`reqs_experimental.txt`):** Экспериментальная серая зона (`outlines`, `guidance`, `llama-index-core`, `unstructured-client`).
 
-## Подготовка проекта
 
-Структура каталогов
+* **Портативность кэшей:** Перенаправляет системные кэши (Hugging Face, FastEmbed и др.) внутрь локальной папки проекта `.cache/`, предотвращая замусоривание профиля пользователя Windows.
+* **Автоматическая проверка:** По завершении установки запускает smoke-тест `test_imports.py` для контроля доступности всех компонентов.
 
-```text
-.\ZEMI\
-├── llama.cpp\
-│   ├── llama-server.exe
-│   ├── ggml-base.dll
-│   ├── ggml-cpu.dll
-│   └── ...
-├── models\
-│   └── Qwen3.5-4B-Q4_K_M.gguf 
-└── minimal_chat.py
-```
+### 2. `rollback.bat` — Мгновенный сброс и откат
 
-Разархивируйте в папку llama.cpp архив <https://github.com/ggml-org/llama.cpp/releases?page=3#release-b9992>
+Скрипт предназначен для экстренного или планового возврата проекта в исходное чистое состояние:
 
-Cкачайте в папку models <https://huggingface.co/bartowski/Qwen_Qwen3.5-4B-GGUF/tree/main>
+* Полностью удаляет папку виртуального окружения `.venv` со всеми установленными пакетами.
+* Удаляет временные служебные файлы (например, загрузчик `uv.exe`).
+* Позволяет быстро устранить последствия неудачных экспериментов с библиотеками и выполнить чистую пересборку.
 
-Откройте PowerShell:
 
-```text
-cd .\ZEMI
-```
-
-Запустите сервер:
-
-```text
-.\llama.cpp\llama-server.exe `
-  --model ".\models\Qwen_Qwen3.5-4B-Q4_K_M.gguf" `
-  --alias "qwen3.5-4b" `
-  --host 127.0.0.1 `
-  --port 8080 `
-  --ctx-size 4096 `
-  --threads 4 `
-  --threads-batch 4 `
-  --reasoning off
-```
-
-Проверьте работоспособность сервера:
-
-```text
-Invoke-RestMethod http://127.0.0.1:8080/v1/models |
-    ConvertTo-Json -Depth 10
-```
-
-Ожидаемый фрагмент:
-
-```text
-{
-  "data": [
-    {
-      "id": "qwen3.5-4b",
-      "object": "model",
-      "owned_by": "llamacpp"
-    ...
-```
-
-Для чистого первого эксперимента оставляем:
-
-```text
-llama.cpp: b9222
-openai:    1.82.0 в составе portable WinPython 3.12
-```
-
-Запускаем runme.ipynb
