@@ -1,27 +1,81 @@
-## Управление песочницей (Скрипты развертывания и сброса)
+Below is a structured `README.md` section (or complete documentation module) covering the architecture principles, layered dependencies, and the REST-mode stub mechanism for `llama-cpp-agent`.
 
-Для автоматического развертывания и очистки изолированной среды проекта используются два командных файла. Они гарантируют, что основная система и WinPython остаются чистыми, а все зависимости и кэши локализованы внутри рабочей директории.
+---
 
-### 1. `setup_sandbox.bat` — Автоматическое развертывание
+# ZEMI PoC Sandbox setup
 
-Скрипт выполняет полную сборку рабочей среды песочницы в пошаговом режиме:
+Компактная, изолированная песочница для тестирования ETL, DuckDB и взаимодействия со сторонними фреймворками через локальный `llama-server.exe` (OpenAI REST API).
 
-* **Создание изолированной среды:** Проверяет наличие или создает локальную папку `.venv` с использованием интерпретатора Python 3.12.
-* **Послойная установка зависимостей:** Устанавливает пакеты из трех файлов требований с флагом жесткой защиты от компиляции C++ кода из исходников (`--only-binary :all:`):
-* **Слой 1 (`reqs_base.txt`):** Базовое ядро (транспорт, быстрый ETL через `python-calamine`, `openpyxl`, `pandas`, `duckdb`, `fastembed`, `streamlit`).
-* **Слой 2 (`reqs_orchestration.txt`):** Инструменты оркестрации, структурирования и вызова функций (`dspy`, `instructor`, `pydantic-ai`, `baml-py`, `smolagents`, `litellm`).
-* **Слой 3 (`reqs_experimental.txt`):** Экспериментальная серая зона (`outlines`, `guidance`, `llama-index-core`, `unstructured-client`).
+---
+
+## 🛠️ Архитектурный принцип: In-Process vs REST Mode
+
+Для обеспечения высокой отзывчивости UI (Streamlit) и полной изоляции процессов в ZEMI **запрещено использование прямого C++ инференса внутри процесса Python** (`llama-cpp-python`). Инференс выполняется исключительно внешним бинарником `llama-server.exe`.
+
+Поскольку фреймворки `llama-cpp-agent` и `guidance` по умолчанию ожидают наличия C-биндингов `llama_cpp`, их интеграция в REST-режиме выполняется через лёгкую виртуальную заглушку (stub) без сборки C++ исходников и установки тяжелых компиляторов (MSVC / CMake).
+
+---
+
+## 📦 Послойная установка зависимостей
+
+Зависимости разделены на 3 слоя для гигиены окружения и мгновенного отката:
+
+* **Слой 1 (`reqs_base.txt`):** Core ETL (`python-calamine`, `openpyxl`, `markitdown`), DuckDB, FastEmbed, Streamlit.
+* **Слой 2 (`reqs_orchestration.txt`):** DSPy, Instructor, Pydantic AI, BAML, Smolagents, LiteLLM.
+* **Слой 3 (`reqs_experimental.txt`):** Outlines, Guidance, LlamaIndex Core, Unstructured Client.
+
+---
+
+## 🪄 Интеграция `llama-cpp-agent` в REST-режиме
+
+### 1. Установка пакета без C++ зависимостей
+
+Пакет устанавливается с флагом `--no-deps`, чтобы исключить автоматическую сборку `llama-cpp-python`:
+
+```powershell
+.\uv.exe pip install llama-cpp-agent --no-deps
+
+```
+
+---
+
+### 2. Создание заглушки `llama_cpp.py`
+
+Чтобы обойти жестко зашитые импорты (`import llama_cpp`, `from llama_cpp import LlamaGrammar`) в `llama-cpp-agent` и `guidance`, в каталог `site-packages` виртуального окружения помещается stub-файл:
+
+* **Путь:** `.venv\Lib\site-packages\llama_cpp.py`
+* **Содержимое:**
+
+```python
+"""
+ZEMI REST-Mode Stub for llama_cpp.
+Перехватывает обращения к C++ биндингам и перенаправляет вызовы на MagicMock,
+обеспечивая работу llama-cpp-agent и guidance через llama-server.exe.
+"""
+from unittest.mock import MagicMock
+
+def __getattr__(name: str):
+    return MagicMock()
+
+Llama = MagicMock
+LlamaGrammar = MagicMock
+
+```
+
+---
+
+## 🚀 Автоматическое развертывание (`setup_sandbox.bat`)
+
+Для автоматической сборки окружения и автосоздания заглушки используйте итоговый сценарий развертывания:
 
 
-* **Портативность кэшей:** Перенаправляет системные кэши (Hugging Face, FastEmbed и др.) внутрь локальной папки проекта `.cache/`, предотвращая замусоривание профиля пользователя Windows.
-* **Автоматическая проверка:** По завершении установки запускает smoke-тест `test_imports.py` для контроля доступности всех компонентов.
+## 🧪 Проверка состояния окружения
 
-### 2. `rollback.bat` — Мгновенный сброс и откат
+Запустите тестовый скрипт проверки всех 17 библиотек:
 
-Скрипт предназначен для экстренного или планового возврата проекта в исходное чистое состояние:
+```powershell
+.\.venv\Scripts\python.exe test_imports.py
 
-* Полностью удаляет папку виртуального окружения `.venv` со всеми установленными пакетами.
-* Удаляет временные служебные файлы (например, загрузчик `uv.exe`).
-* Позволяет быстро устранить последствия неудачных экспериментов с библиотеками и выполнить чистую пересборку.
+```
 
-
+При правильной настройке все модули (включая `python-calamine`, `llama-cpp-agent` и `guidance`) вернут статус `[OK]`.

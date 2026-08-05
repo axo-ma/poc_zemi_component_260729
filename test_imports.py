@@ -1,7 +1,7 @@
 import os
 import sys
 
-# Отключаем обязательную сетевую валидацию стоимости LiteLLM при импорте
+# Отключаем сетевую проверку LiteLLM
 os.environ["LITELLM_LOCAL_MODEL_COST_MAP"] = "True"
 
 def check_import(module_name: str, display_name: str = None) -> bool:
@@ -32,6 +32,7 @@ def main():
     check_import("pydantic_ai", "pydantic-ai")
     check_import("baml_py", "baml-py")
     check_import("smolagents")
+    check_import("llama_cpp_agent", "llama-cpp-agent")
     check_import("litellm")
 
     print("\nСлой 3: Logit Masking & RAG Core")
