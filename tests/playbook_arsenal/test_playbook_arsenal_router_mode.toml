@@ -1,5 +1,5 @@
 # Тестовая конфигурация двух многомодельных llama.cpp-серверов для Router Mode.
-# Значение prefix каждой сессии загружается модулем zemi.toml из Markdown-файла.
+# Значение prefix хранится как проверяемая ссылка на существующий Markdown-файл.
 
 non_text_reference = "@comp/runme.toml"
 text_reference = "@comp/tests/zemi_toml/prefixes/plain-text.txt"

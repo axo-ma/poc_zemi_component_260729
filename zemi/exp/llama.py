@@ -116,7 +116,7 @@ def load_llama(build: str, *, url: str | None = None) -> Path:
     server = target / "llama-server.exe"
 
     if server.is_file():
-        print(f"llama.cpp {normalized_build} уже загружен: {target.resolve()}")
+        print(f"llama.cpp {normalized_build} уже скачан: {target.resolve()}")
         return target
 
     archive_url = url or (
@@ -153,7 +153,7 @@ def load_llama(build: str, *, url: str | None = None) -> Path:
         if extract_to.exists():
             shutil.rmtree(extract_to)
 
-    print(f"llama.cpp {normalized_build} загружен: {target.resolve()}")
+    print(f"llama.cpp {normalized_build} скачан: {target.resolve()}")
     return target
 
 
@@ -170,7 +170,7 @@ def load_model(
     target = target_directory / filename
 
     if target.is_file():
-        print(f"Модель уже загружена: {target.resolve()}")
+        print(f"Модель уже скачана: {target.resolve()}")
         return target
 
     if url is None:
@@ -184,7 +184,7 @@ def load_model(
         target,
         label=f"Модель {owner}/{repository}/{filename}",
     )
-    print(f"Модель загружена: {target.resolve()}")
+    print(f"Модель скачана: {target.resolve()}")
     return target
 
 
@@ -196,7 +196,7 @@ def download(
     model_filename: str,
     model_source: str = "hf",
 ) -> tuple[Path, Path]:
-    """Загружает отсутствующие llama.cpp и модель."""
+    """Скачивает отсутствующие llama.cpp и модель из интернет-источников."""
     llama_path = load_llama(llama_build)
     model_path = load_model(
         model_owner,

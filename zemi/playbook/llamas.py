@@ -1,4 +1,4 @@
-"""Загрузка llama.cpp и GGUF-моделей для ZEMI Playbook."""
+"""Скачивание llama.cpp и GGUF-моделей для ZEMI Playbook."""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ __all__ = [
 
 
 class DownloadError(RuntimeError):
-    """Ожидаемая ошибка загрузки внешнего ресурса."""
+    """Ожидаемая ошибка скачивания внешнего ресурса."""
 
 
 def _display_zemi_path(path: Path) -> str:
@@ -109,7 +109,7 @@ def _download(
                     raise DownloadError(
                         "Сервер не сообщил размер модели.\n"
                         f"Адрес: {url}\n"
-                        "Без размера безопасная загрузка модели невозможна."
+                        "Без размера безопасное скачивание модели невозможно."
                     )
                 size_file.write_text(str(total), encoding="ascii")
             progress = _Progress(label, total)
@@ -122,11 +122,11 @@ def _download(
 
             if total is not None and loaded != total:
                 raise DownloadError(
-                    "Загрузка завершилась раньше времени.\n"
+                    "Скачивание завершилось раньше времени.\n"
                     f"Получено: {_format_size(loaded)}\n"
                     f"Ожидалось: {_format_size(total)}\n"
                     f"Адрес: {url}\n"
-                    "Временный файл будет удалён; запустите загрузку повторно."
+                    "Временный файл будет удалён; повторите скачивание."
                 )
 
             progress.update(loaded, done=True)
@@ -143,7 +143,7 @@ def _download(
     except URLError as error:
         temporary.unlink(missing_ok=True)
         raise DownloadError(
-            "Не удалось подключиться к серверу загрузки.\n"
+            "Не удалось подключиться к серверу скачивания.\n"
             f"Причина: {error.reason}\n"
             f"Адрес: {url}\n"
             "Проверьте подключение к интернету и доступность сайта."
@@ -151,7 +151,7 @@ def _download(
     except OSError as error:
         temporary.unlink(missing_ok=True)
         raise DownloadError(
-            "Не удалось сохранить загружаемый файл.\n"
+            "Не удалось сохранить скачиваемый файл.\n"
             f"Назначение: {_display_zemi_path(destination)}\n"
             f"Причина: {error}"
         ) from None
@@ -185,7 +185,7 @@ def _is_complete_model(model_path: Path, size_file: Path) -> bool:
     if expected_size is None:
         size_file.write_text(str(actual_size), encoding="ascii")
         print(
-            "Создан локальный файл размера для ранее загруженной модели: "
+            "Создан локальный файл размера для ранее скачанной модели: "
             f"{_display_zemi_path(size_file)}"
         )
         return True
@@ -196,9 +196,9 @@ def _is_complete_model(model_path: Path, size_file: Path) -> bool:
     print(
         "Обнаружен неполный файл модели:\n"
         f"  файл: {_display_zemi_path(model_path)}\n"
-        f"  загружено: {_format_size(actual_size)}\n"
+        f"  скачано: {_format_size(actual_size)}\n"
         f"  ожидается: {_format_size(expected_size)}\n"
-        "Модель будет загружена заново."
+        "Модель будет скачана заново."
     )
     return False
 
@@ -211,7 +211,7 @@ def download_llama(build: str, *, url: str | None = None) -> Path:
 
     if server.is_file():
         print(
-            f"llama.cpp {normalized_build} уже загружен: "
+            f"llama.cpp {normalized_build} уже скачан: "
             f"{_display_zemi_path(target)}"
         )
         return target
@@ -252,7 +252,7 @@ def download_llama(build: str, *, url: str | None = None) -> Path:
             shutil.rmtree(extract_to)
 
     print(
-        f"llama.cpp {normalized_build} загружен: "
+        f"llama.cpp {normalized_build} скачан: "
         f"{_display_zemi_path(target)}"
     )
     return target
@@ -277,7 +277,7 @@ def download_model(
         url = f"https://huggingface.co/{owner}/{repository}/resolve/main/{filename}"
 
     if _is_complete_model(target, size_file):
-        print(f"Модель уже загружена: {_display_zemi_path(target)}")
+        print(f"Модель уже скачана: {_display_zemi_path(target)}")
         return target
 
     print(f"Скачиваю модель {owner}/{repository}/{filename}...")
@@ -287,5 +287,5 @@ def download_model(
         label=f"Модель {owner}/{repository}/{filename}",
         size_file=size_file,
     )
-    print(f"Модель загружена: {_display_zemi_path(target)}")
+    print(f"Модель скачана: {_display_zemi_path(target)}")
     return target

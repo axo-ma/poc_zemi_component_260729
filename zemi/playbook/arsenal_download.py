@@ -1,4 +1,4 @@
-"""Загрузка ресурсов и создание готового ZEMI Arsenal."""
+"""Скачивание внешних ресурсов и создание готового ZEMI Arsenal."""
 
 from __future__ import annotations
 
@@ -22,12 +22,12 @@ def _resolve_zemi_path(value: str | Path) -> Path:
 
 
 def download(config_path: str | Path) -> Arsenal:
-    """Загружает все сборки llama.cpp и модели из конфигурации Arsenal."""
+    """Читает конфигурацию и скачивает отсутствующие llama.cpp и модели."""
     path = _resolve_zemi_path(config_path)
     config_label = str(config_path).replace("\\", "/")
 
     print("═" * 78)
-    print("ZEMI Playbook · загрузка Arsenal")
+    print("ZEMI Playbook · подготовка Arsenal")
     print(f"Конфигурация: {config_label}")
     print("═" * 78)
 
@@ -42,7 +42,7 @@ def download(config_path: str | Path) -> Arsenal:
     def stop_with_error(error: DownloadError) -> Arsenal:
         print()
         print("!" * 78)
-        print("ЗАГРУЗКА ОСТАНОВЛЕНА")
+        print("СКАЧИВАНИЕ ОСТАНОВЛЕНО")
         print("!" * 78)
         print(error)
         print()
@@ -69,7 +69,7 @@ def download(config_path: str | Path) -> Arsenal:
             result._llama_paths[llama_name] = download_llama(llama.llama_build)
         except DownloadError as error:
             return stop_with_error(DownloadError(
-                f"Не удалось загрузить llama-server {llama_name!r} "
+                f"Не удалось скачать llama-server {llama_name!r} "
                 f"({llama.llama_build}).\n\n{error}"
             ))
 
@@ -92,7 +92,7 @@ def download(config_path: str | Path) -> Arsenal:
                 )
             except DownloadError as error:
                 return stop_with_error(DownloadError(
-                    f"Не удалось загрузить модель {model_key!r}.\n"
+                    f"Не удалось скачать модель {model_key!r}.\n"
                     f"Модель: {model.owner}/{model.repository}/{model.filename}"
                     f"\n\n{error}"
                 ))

@@ -1,4 +1,4 @@
-"""Загрузка ресурсов Arsenal из конфигурации ZEMI Playbook."""
+"""Runtime-управление процессами и локальными ресурсами ZEMI Arsenal."""
 
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ __all__ = ["Arsenal"]
 
 @dataclass
 class Arsenal:
-    """Загруженная конфигурация и ресурсы Arsenal."""
+    """Runtime-объект Arsenal, построенный из прочитанной TOML-конфигурации."""
 
     config: dict[str, Any]
     llamas: NamedObjects[Llama] = field(init=False)
