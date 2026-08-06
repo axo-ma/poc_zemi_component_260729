@@ -27,6 +27,8 @@ class Clients:
         model: Имя модели, которое следует передавать клиентам. Оно обязательно
             для фабрик, создающих готовую модель, но не для низкоуровневых HTTP-
             клиентов.
+        context_window: Размер контекстного окна модели в токенах. Используется
+            интеграциями, которым неизвестны метаданные локального alias.
         api_key: Ключ OpenAI API. llama.cpp обычно не проверяет ключ, однако
             многие клиенты требуют непустое значение.
         timeout: Стандартный тайм-аут HTTP-запросов в секундах.
@@ -54,6 +56,7 @@ class Clients:
         base_url: str,
         *,
         model: str | None = None,
+        context_window: int | None = None,
         api_key: str = "llama.cpp",
         timeout: float = 60.0,
     ) -> None:
@@ -61,6 +64,8 @@ class Clients:
             raise ValueError("base_url должен быть непустой строкой")
         if timeout <= 0:
             raise ValueError("timeout должен быть больше нуля")
+        if context_window is not None and context_window <= 0:
+            raise ValueError("context_window должен быть больше нуля")
 
         normalized = base_url.strip().rstrip("/")
         if normalized.endswith("/v1"):
@@ -69,6 +74,7 @@ class Clients:
         self.server_url = normalized
         self.openai_url = f"{normalized}/v1"
         self.model = model
+        self.context_window = context_window
         self.api_key = api_key
         self.timeout = timeout
 
@@ -190,15 +196,18 @@ class Clients:
 
     @cached_property
     def llama_index(self) -> Any:
-        """Возвращает OpenAI LLM-интеграцию LlamaIndex."""
+        """Возвращает LlamaIndex LLM для OpenAI-совместимого локального сервера."""
         module = self._module(
-            "llama_index.llms.openai", "llama-index-llms-openai"
+            "llama_index.llms.openai_like", "llama-index-llms-openai-like"
         )
-        return module.OpenAI(**{
+        return module.OpenAILike(**{
             "model": self._model(),
             "api_base": self.openai_url,
             "api_key": self.api_key,
             "timeout": self.timeout,
+            "context_window": self.context_window or 3900,
+            "is_chat_model": True,
+            "is_function_calling_model": False,
         })
 
     @cached_property

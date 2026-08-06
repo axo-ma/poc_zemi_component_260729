@@ -87,6 +87,7 @@ class ArsenalObjectTreeTests(unittest.TestCase):
         self.assertEqual(assistant.clients.server_url, "http://127.0.0.1:8080")
         self.assertEqual(assistant.clients.openai_url, "http://127.0.0.1:8080/v1")
         self.assertEqual(assistant.clients.model, "qwen3.5-4b")
+        self.assertEqual(assistant.clients.context_window, 8192)
 
     def test_each_assistant_has_own_clients_object(self) -> None:
         qwen = self.arsenal.llamas.primary.models.qwen
@@ -97,6 +98,10 @@ class ArsenalObjectTreeTests(unittest.TestCase):
         self.assertIsNot(assistant.clients, json_converter.clients)
         self.assertEqual(assistant.clients.server_url, json_converter.clients.server_url)
         self.assertEqual(assistant.clients.model, json_converter.clients.model)
+        self.assertEqual(
+            assistant.clients.context_window,
+            json_converter.clients.context_window,
+        )
 
     def test_runtime_tree_wraps_but_does_not_replace_raw_config(self) -> None:
         primary = self.arsenal.llamas.primary

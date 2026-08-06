@@ -92,7 +92,11 @@ class Model(_ConfigObject):
             NamedObjects([
                 Assistant(
                     config,
-                    Clients(self._base_url, model=self.config["alias"]),
+                    Clients(
+                        self._base_url,
+                        model=self.config["alias"],
+                        context_window=self.config["ctx_size"],
+                    ),
                 )
                 for config in configs
             ]),

@@ -40,6 +40,10 @@ def main():
     check_import("guidance")
     check_import("llama_index.core", "llama-index-core")
     check_import("llama_index.llms.openai", "llama-index-llms-openai")
+    check_import(
+        "llama_index.llms.openai_like",
+        "llama-index-llms-openai-like",
+    )
     check_import("unstructured_client", "unstructured-client")
 
     print("\n--- Тест завершен ---\n")

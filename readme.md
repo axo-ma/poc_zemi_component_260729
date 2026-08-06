@@ -4,6 +4,36 @@ Below is a structured `README.md` section (or complete documentation module) cov
 
 # ZEMI PoC Sandbox setup
 
+## LlamaIndex для локального llama.cpp
+
+Интеграция LlamaIndex с моделью из ZEMI Arsenal использует адаптер
+`OpenAILike`. Обычный пакет `llama-index-llms-openai` рассчитан на модели из
+каталога OpenAI и не подходит для локальных alias вроде `qwen3.5-4b` без
+некорректной подмены имени модели.
+
+Установите официальный адаптер только в виртуальное окружение компонента:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install llama-index-llms-openai-like
+```
+
+Проверьте установку:
+
+```powershell
+.\.venv\Scripts\python.exe -c "from llama_index.llms.openai_like import OpenAILike; print('OK')"
+```
+
+`Assistant.clients.llama_index` автоматически получает из конфигурации Arsenal:
+
+- адрес OpenAI API соответствующего llama-сервера;
+- реальный `model.alias`;
+- размер контекстного окна `model.ctx_size`;
+- признак chat-модели.
+
+Для RAG дополнительно нужны embedding-модель и vector store. Они настраиваются
+в LlamaIndex отдельно от LLM; в качестве локального хранилища можно использовать
+DuckDB.
+
 Компактная, изолированная песочница для тестирования ETL, DuckDB и взаимодействия со сторонними фреймворками через локальный `llama-server.exe` (OpenAI REST API).
 
 ---
