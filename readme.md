@@ -79,3 +79,61 @@ LlamaGrammar = MagicMock
 ```
 
 При правильной настройке все модули (включая `python-calamine`, `llama-cpp-agent` и `guidance`) вернут статус `[OK]`.
+
+---
+
+## Запуск Jupyter-ноутбуков в VS Code
+
+Ноутбуки проекта необходимо запускать через виртуальное окружение компонента:
+
+```text
+@comp/.venv/Scripts/python.exe
+```
+
+Для выполнения ячейки VS Code недостаточно обычного интерпретатора Python. В выбранном окружении также должны быть установлены `pip` и `ipykernel`. Если их нет, VS Code показывает сообщение:
+
+```text
+Running cells with 'Python 3.12.10' requires the ipykernel and pip package.
+```
+
+### Восстановление `pip`
+
+Если команда `python -m pip` завершается ошибкой `No module named pip`, восстановите `pip` встроенным модулем Python:
+
+```powershell
+.\.venv\Scripts\python.exe -m ensurepip --upgrade
+```
+
+Проверьте, что используется `pip` именно из окружения компонента:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip --version
+```
+
+В выведенном пути должен присутствовать каталог `@comp/.venv`.
+
+### Установка Jupyter-ядра
+
+Установите `ipykernel` и необходимые ему зависимости в то же окружение:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install ipykernel
+```
+
+Проверьте установку:
+
+```powershell
+.\.venv\Scripts\python.exe -c "import ipykernel; print(ipykernel.__version__)"
+```
+
+### Выбор ядра в VS Code
+
+1. Откройте файл `.ipynb`.
+2. Нажмите **Select Kernel** или **Change Kernel** в правом верхнем углу редактора.
+3. Выберите **Python Environments**.
+4. Укажите интерпретатор `@comp/.venv/Scripts/python.exe`.
+5. Запустите ячейку ещё раз.
+
+Если VS Code продолжает показывать старое состояние окружения, выполните команду **Developer: Reload Window** через палитру команд и повторно выберите ядро. Нажимать кнопку **Install** во всплывающем окне после ручной установки уже не требуется.
+
+Установка выполняется только в `@comp/.venv`: системный Python и базовая среда WinPython при этом не изменяются.

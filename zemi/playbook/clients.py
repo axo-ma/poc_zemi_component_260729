@@ -43,7 +43,7 @@ class Clients:
         "baml",
         "smolagents",
         "llama_index",
-        "native_gbnf",
+        "httpx",
         "llama_cpp_agent",
         "outlines",
         "guidance",
@@ -112,7 +112,18 @@ class Clients:
             "api_key": self.api_key,
             "timeout": self.timeout,
         }
-        model_list = [{"model_name": model_name, "litellm_params": params}]
+        model_info = {
+            "input_cost_per_token": 0.0,
+            "output_cost_per_token": 0.0,
+            "cache_creation_input_token_cost": 0.0,
+            "cache_read_input_token_cost": 0.0,
+        }
+        module.register_model(model_cost={params["model"]: model_info})
+        model_list = [{
+            "model_name": model_name,
+            "litellm_params": params,
+            "model_info": model_info,
+        }]
         return module.Router(model_list=model_list)
 
     @cached_property
@@ -191,7 +202,7 @@ class Clients:
         })
 
     @cached_property
-    def native_gbnf(self) -> Any:
+    def httpx(self) -> Any:
         """Возвращает ``httpx.Client`` для прямых POST на ``/completion``."""
         module = self._module("httpx")
         return module.Client(base_url=self.server_url, timeout=self.timeout)
