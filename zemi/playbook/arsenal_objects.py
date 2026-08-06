@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Generic, Iterator, TypeVar, overload
 
+from .clients import Clients
+
 
 __all__ = ["Assistant", "Llama", "Model", "NamedObjects"]
 
@@ -67,6 +69,7 @@ class Assistant(_ConfigObject):
     """Ассистент модели и его исходная TOML-конфигурация."""
 
     config: dict[str, Any]
+    clients: Clients
 
     @property
     def name(self) -> str:
@@ -78,6 +81,7 @@ class Model(_ConfigObject):
     """Модель llama-сервера, её ассистенты и TOML-конфигурация."""
 
     config: dict[str, Any]
+    _base_url: str = field(repr=False)
     assistants: NamedObjects[Assistant] = field(init=False)
 
     def __post_init__(self) -> None:
@@ -85,7 +89,13 @@ class Model(_ConfigObject):
         object.__setattr__(
             self,
             "assistants",
-            NamedObjects([Assistant(config) for config in configs]),
+            NamedObjects([
+                Assistant(
+                    config,
+                    Clients(self._base_url, model=self.config["alias"]),
+                )
+                for config in configs
+            ]),
         )
 
     @property
@@ -101,10 +111,13 @@ class Llama(_ConfigObject):
     models: NamedObjects[Model] = field(init=False)
 
     def __post_init__(self) -> None:
+        base_url = f"http://{self.config['host']}:{self.config['port']}"
         object.__setattr__(
             self,
             "models",
-            NamedObjects([Model(config) for config in self.config["models"]]),
+            NamedObjects([
+                Model(config, base_url) for config in self.config["models"]
+            ]),
         )
 
     @property

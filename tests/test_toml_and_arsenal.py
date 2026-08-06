@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 from zemi import env, toml
 from zemi.playbook import Arsenal, Assistant, Llama, Model, download
+from zemi.playbook.clients import Clients
 
 
 CONFIG_PATH = (
@@ -82,6 +83,20 @@ class ArsenalObjectTreeTests(unittest.TestCase):
             assistant.prefix,
             "@comp/tests/zemi_toml/prefixes/qwen-system.md",
         )
+        self.assertIsInstance(assistant.clients, Clients)
+        self.assertEqual(assistant.clients.server_url, "http://127.0.0.1:8080")
+        self.assertEqual(assistant.clients.openai_url, "http://127.0.0.1:8080/v1")
+        self.assertEqual(assistant.clients.model, "qwen3.5-4b")
+
+    def test_each_assistant_has_own_clients_object(self) -> None:
+        qwen = self.arsenal.llamas.primary.models.qwen
+
+        assistant = qwen.assistants.assistant
+        json_converter = qwen.assistants.json_converter
+
+        self.assertIsNot(assistant.clients, json_converter.clients)
+        self.assertEqual(assistant.clients.server_url, json_converter.clients.server_url)
+        self.assertEqual(assistant.clients.model, json_converter.clients.model)
 
     def test_runtime_tree_wraps_but_does_not_replace_raw_config(self) -> None:
         primary = self.arsenal.llamas.primary
