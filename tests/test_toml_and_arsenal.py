@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+import json
 import unittest
 from contextlib import redirect_stdout
 from io import StringIO
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
+import zemi.playbook as playbook
 from zemi import env, toml
-from zemi.playbook import Arsenal, Assistant, Llama, Model, download
+from zemi.playbook import Arsenal, Assistant, Llama, Model
 from zemi.playbook.clients import Clients
 
 
@@ -110,36 +112,192 @@ class ArsenalObjectTreeTests(unittest.TestCase):
         self.assertIs(type(self.arsenal.config["arsenal"]["llamas"]), list)
         self.assertIs(primary.config, self.config["arsenal"]["llamas"][0])
 
-    def test_model_runtime_and_download_have_separate_modules(self) -> None:
+    def test_runtime_types_have_separate_modules(self) -> None:
         self.assertEqual(Assistant.__module__, "zemi.playbook.arsenal_objects")
         self.assertEqual(Model.__module__, "zemi.playbook.arsenal_objects")
         self.assertEqual(Llama.__module__, "zemi.playbook.arsenal_objects")
         self.assertEqual(Arsenal.__module__, "zemi.playbook.arsenal")
-        self.assertEqual(download.__module__, "zemi.playbook.arsenal_download")
+
+    def test_download_exists_only_on_arsenal_class(self) -> None:
+        self.assertFalse(hasattr(playbook, "download"))
+        self.assertTrue(callable(Arsenal.download))
 
 
-class ArsenalDownloadTests(unittest.TestCase):
-    @patch("zemi.playbook.arsenal_download.download_model")
-    @patch("zemi.playbook.arsenal_download.download_llama")
-    def test_download_builds_runtime_tree(
+class ArsenalLazyActivationTests(unittest.TestCase):
+    MODEL_MODE_PATH = (
+        "@comp/tests/playbook_arsenal/"
+        "test_playbook_arsenal_model_mode.toml"
+    )
+    ROUTER_MODE_PATH = (
+        "@comp/tests/playbook_arsenal/"
+        "test_playbook_arsenal_router_mode.toml"
+    )
+
+    @patch("zemi.playbook.arsenal.download_model")
+    @patch("zemi.playbook.arsenal.download_llama")
+    def test_constructor_and_begin_do_not_download_or_start(
+        self,
+        download_llama_mock,
+        download_model_mock,
+    ) -> None:
+        result = Arsenal(self.MODEL_MODE_PATH)
+
+        self.assertEqual(result.config_path, self.MODEL_MODE_PATH)
+        self.assertEqual(len(result.llamas), 2)
+        self.assertEqual(result.llamas.primary.models.qwen.name, "qwen")
+        download_llama_mock.assert_not_called()
+        download_model_mock.assert_not_called()
+
+        with redirect_stdout(StringIO()):
+            with patch.object(result, "_stop_arsenal") as stop_mock:
+                result.begin_playbook(
+                    stop_arsenal_before_begin=True,
+                    llama_router_mode=False,
+                )
+
+        stop_mock.assert_called_once_with()
+        download_llama_mock.assert_not_called()
+        download_model_mock.assert_not_called()
+        self.assertEqual(result._processes, {})
+
+    @patch("zemi.playbook.arsenal.download_model")
+    @patch("zemi.playbook.arsenal.download_llama")
+    def test_download_eagerly_prepares_every_resource_without_starting(
+        self,
+        download_llama_mock,
+        download_model_mock,
+    ) -> None:
+        download_llama_mock.side_effect = [
+            Path("llama-primary"),
+            Path("llama-secondary"),
+        ]
+        download_model_mock.side_effect = [
+            Path("qwen.gguf"),
+            Path("phi.gguf"),
+        ]
+        result = Arsenal(self.MODEL_MODE_PATH)
+
+        with (
+            patch.object(result, "_start_server") as start_mock,
+            redirect_stdout(StringIO()),
+        ):
+            result.download()
+            result.download()
+
+        self.assertEqual(download_llama_mock.call_count, 2)
+        self.assertEqual(download_model_mock.call_count, 2)
+        self.assertEqual(len(result._llama_paths), 2)
+        self.assertEqual(len(result._model_paths), 2)
+        self.assertFalse(result._playbook_active)
+        start_mock.assert_not_called()
+
+    @patch("zemi.playbook.arsenal.download_model")
+    @patch("zemi.playbook.arsenal.download_llama")
+    def test_model_access_downloads_and_starts_only_once(
         self,
         download_llama_mock,
         download_model_mock,
     ) -> None:
         download_llama_mock.return_value = Path("llama")
         download_model_mock.return_value = Path("model.gguf")
+        result = Arsenal(self.MODEL_MODE_PATH)
 
-        with redirect_stdout(StringIO()):
-            result = download(
-                "@comp/tests/playbook_arsenal/"
-                "test_playbook_arsenal_router_mode.toml"
+        with (
+            patch.object(result, "_server_path", return_value=Path("server.exe")),
+            patch.object(result, "_model_path", return_value=Path("model.gguf")),
+            patch.object(result, "_start_server") as start_mock,
+            patch.object(result, "_is_server_ready", return_value=True),
+            redirect_stdout(StringIO()),
+        ):
+            result.begin_playbook(
+                stop_arsenal_before_begin=False,
+                llama_router_mode=False,
             )
+            first = result.llamas["primary"].models["qwen"]
+            second = result.llamas.primary.models.qwen
 
-        self.assertIsInstance(result, Arsenal)
-        self.assertEqual(len(result.llamas), 2)
-        self.assertEqual(download_llama_mock.call_count, 2)
-        self.assertEqual(download_model_mock.call_count, 4)
+        self.assertIs(first, second)
+        download_llama_mock.assert_called_once_with("llama:b9222")
+        download_model_mock.assert_called_once_with(
+            "bartowski",
+            "Qwen_Qwen3.5-4B-GGUF",
+            "Qwen_Qwen3.5-4B-Q4_K_M.gguf",
+            source="hf",
+        )
+        start_mock.assert_called_once()
 
+    @patch("zemi.playbook.arsenal.download_model")
+    @patch("zemi.playbook.arsenal.download_llama")
+    def test_router_adds_models_without_restarting_parent_server(
+        self,
+        download_llama_mock,
+        download_model_mock,
+    ) -> None:
+        download_llama_mock.return_value = Path("llama")
+        download_model_mock.side_effect = [Path("qwen.gguf"), Path("smollm.gguf")]
+        result = Arsenal(self.ROUTER_MODE_PATH)
+
+        process = Mock()
+        process.poll.return_value = None
+
+        def remember_process(llama, _command) -> None:
+            result._processes[llama.name] = process
+
+        with (
+            patch.object(result, "_server_path", return_value=Path("server.exe")),
+            patch.object(
+                result,
+                "_write_router_preset",
+                return_value=Path("models.ini"),
+            ) as preset_mock,
+            patch.object(
+                result,
+                "_start_server",
+                side_effect=remember_process,
+            ) as start_mock,
+            patch.object(result, "_load_router_model") as load_mock,
+            patch.object(result, "_stop_llama") as stop_mock,
+            redirect_stdout(StringIO()),
+        ):
+            result.begin_playbook(
+                stop_arsenal_before_begin=False,
+                llama_router_mode=True,
+            )
+            qwen = result.llamas.primary.models.qwen
+            smollm = result.llamas.primary.models.smollm
+
+        self.assertEqual((qwen.name, smollm.name), ("qwen", "smollm"))
+        download_llama_mock.assert_called_once_with("llama:b9222")
+        self.assertEqual(download_model_mock.call_count, 2)
+        preset_mock.assert_called_once()
+        start_mock.assert_called_once()
+        self.assertEqual(load_mock.call_count, 2)
+        stop_mock.assert_not_called()
+
+    def test_router_load_endpoint_uses_model_alias(self) -> None:
+        result = Arsenal(self.ROUTER_MODE_PATH)
+        llama = result.llamas.primary
+        model = llama.models.qwen
+        response = Mock()
+        response.__enter__ = Mock(return_value=response)
+        response.__exit__ = Mock(return_value=False)
+        response.read.return_value = b'{"success": true}'
+
+        with (
+            patch(
+                "zemi.playbook.arsenal.urlopen",
+                return_value=response,
+            ) as urlopen_mock,
+            redirect_stdout(StringIO()),
+        ):
+            result._load_router_model(llama, model)
+
+        request = urlopen_mock.call_args.args[0]
+        self.assertEqual(
+            request.full_url,
+            "http://127.0.0.1:8080/models/load",
+        )
+        self.assertEqual(json.loads(request.data), {"model": "qwen3.5-4b"})
 
 if __name__ == "__main__":
     unittest.main()

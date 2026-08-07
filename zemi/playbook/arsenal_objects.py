@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any, Generic, Iterator, TypeVar, overload
 
@@ -29,9 +30,24 @@ class _ConfigObject:
 class NamedObjects(Generic[_T]):
     """Упорядоченная коллекция объектов с доступом по индексу и имени."""
 
-    def __init__(self, items: list[_T]) -> None:
+    def __init__(
+        self,
+        items: list[_T],
+        *,
+        on_access: Callable[[_T], None] | None = None,
+    ) -> None:
         self._items = tuple(items)
         self._by_name = {item.name: item for item in items}
+        self._on_access = on_access
+
+    def _access(self, item: _T) -> _T:
+        if self._on_access is not None:
+            self._on_access(item)
+        return item
+
+    def _iter_raw(self) -> Iterator[_T]:
+        """Итерирует без побочных эффектов для внутреннего кода Arsenal."""
+        return iter(self._items)
 
     @overload
     def __getitem__(self, key: int) -> _T: ...
@@ -40,16 +56,19 @@ class NamedObjects(Generic[_T]):
     def __getitem__(self, key: str) -> _T: ...
 
     def __getitem__(self, key: int | str) -> _T:
-        return self._items[key] if isinstance(key, int) else self._by_name[key]
+        item = self._items[key] if isinstance(key, int) else self._by_name[key]
+        return self._access(item)
 
     def __getattr__(self, name: str) -> _T:
         try:
-            return self._by_name[name]
+            item = self._by_name[name]
         except KeyError:
             raise AttributeError(name) from None
+        return self._access(item)
 
     def __iter__(self) -> Iterator[_T]:
-        return iter(self._items)
+        for item in self._items:
+            yield self._access(item)
 
     def __len__(self) -> int:
         return len(self._items)
@@ -58,10 +77,13 @@ class NamedObjects(Generic[_T]):
         return self._by_name.keys()
 
     def values(self):
-        return self._by_name.values()
+        return (self._access(item) for item in self._by_name.values())
 
     def items(self):
-        return self._by_name.items()
+        return (
+            (name, self._access(item))
+            for name, item in self._by_name.items()
+        )
 
 
 @dataclass(frozen=True)
@@ -82,6 +104,11 @@ class Model(_ConfigObject):
 
     config: dict[str, Any]
     _base_url: str = field(repr=False)
+    _on_access: Callable[[Model], None] | None = field(
+        default=None,
+        repr=False,
+        compare=False,
+    )
     assistants: NamedObjects[Assistant] = field(init=False)
 
     def __post_init__(self) -> None:
@@ -89,17 +116,24 @@ class Model(_ConfigObject):
         object.__setattr__(
             self,
             "assistants",
-            NamedObjects([
-                Assistant(
-                    config,
-                    Clients(
-                        self._base_url,
-                        model=self.config["alias"],
-                        context_window=self.config["ctx_size"],
-                    ),
-                )
-                for config in configs
-            ]),
+            NamedObjects(
+                [
+                    Assistant(
+                        config,
+                        Clients(
+                            self._base_url,
+                            model=self.config["alias"],
+                            context_window=self.config["ctx_size"],
+                        ),
+                    )
+                    for config in configs
+                ],
+                on_access=(
+                    None
+                    if self._on_access is None
+                    else lambda _assistant: self._on_access(self)
+                ),
+            ),
         )
 
     @property
@@ -112,6 +146,11 @@ class Llama(_ConfigObject):
     """Llama-сервер, его модели и исходная TOML-конфигурация."""
 
     config: dict[str, Any]
+    _on_model_access: Callable[[Llama, Model], None] | None = field(
+        default=None,
+        repr=False,
+        compare=False,
+    )
     models: NamedObjects[Model] = field(init=False)
 
     def __post_init__(self) -> None:
@@ -119,10 +158,24 @@ class Llama(_ConfigObject):
         object.__setattr__(
             self,
             "models",
-            NamedObjects([
-                Model(config, base_url) for config in self.config["models"]
-            ]),
+            NamedObjects(
+                [
+                    Model(
+                        config,
+                        base_url,
+                        None
+                        if self._on_model_access is None
+                        else lambda model: self._on_model_access(self, model),
+                    )
+                    for config in self.config["models"]
+                ],
+                on_access=self._activate_model,
+            ),
         )
+
+    def _activate_model(self, model: Model) -> None:
+        if self._on_model_access is not None:
+            self._on_model_access(self, model)
 
     @property
     def name(self) -> str:
